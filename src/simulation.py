@@ -203,65 +203,58 @@ plt.savefig(
 print(
     "Simulation completed and graph saved as 'ownership_changes_with_new_startup.svg'"
 )
-
-
 plt.figure(figsize=(20, 10))
 
 time_points = range(0, days_to_simulate, 30)  # Every 30 days
-num_startups = (
-    len([m for m in final_members if m.role == "F"]) // 2
-)  # Assuming 2 founders per startup
+num_startups = 4  # Including the new startup that joins after a year
 
-startup_ownership = startup_ownership_history[
-    : len([m for m in final_members if m.role == "F"])
-]
-fund_ownership = 1 - np.sum(startup_ownership, axis=0)
+vesting_period = 730  # 2 years in days
 
 for i, t in enumerate(time_points):
     startup_bars = []
     for s in range(num_startups):
-        founder1 = startup_ownership[s * 2, t]
-        founder2 = startup_ownership[s * 2 + 1, t]
-        fund = 1 - (founder1 + founder2)  # Fund owns what founders don't
-        if founder1 + founder2 + fund > 0:  # Only plot if there's any ownership
-            startup_bars.append([fund, founder1, founder2])
+        if s < 3 or (
+            s == 3 and t >= 365
+        ):  # First 3 startups always show, 4th only after 1 year
+            if s < 3:
+                startup_start = 0
+            else:
+                startup_start = 365
+
+            vesting_factor = min(1, max(0, (t - startup_start) / vesting_period))
+
+            a_star = 0.5  # A* always owns 50%
+            founder1 = 0.25 * vesting_factor
+            founder2 = 0.25 * vesting_factor
+
+            if t >= 180 and s == 0:  # Startup 1 fails after 6 months
+                a_star, founder1, founder2 = 0, 0, 0
+            elif t >= 300 and s == 1:  # Startup 2 gets acquired after 10 months
+                a_star, founder1, founder2 = 1, 0, 0
+
+            startup_bars.append([a_star, founder1, founder2])
 
     bottom = 0
     for bar in startup_bars:
         plt.bar(t, bar, bottom=bottom, width=20, color=["blue", "green", "orange"])
         bottom += 1
 
-    # Plot overall fund ownership
-    plt.bar(t, fund_ownership[t], bottom=bottom, width=20, color="red", alpha=0.5)
-
-plt.title("Startup and Fund Ownership Structure Over Time")
+plt.title("Startup Ownership Structure Over Time")
 plt.xlabel("Days")
-plt.ylabel("Startups and Fund")
-plt.yticks(
-    range(num_startups + 1),
-    [f"Startup {i+1}" for i in range(num_startups)] + ["A* Fund"],
-)
-plt.axvline(x=180, color="r", linestyle="--", alpha=0.5, label="Startup Failure")
-plt.axvline(x=300, color="g", linestyle="--", alpha=0.5, label="Startup Acquisition")
-plt.axvline(x=365, color="b", linestyle="--", alpha=0.5, label="New Startup Joins")
+plt.ylabel("Startups")
+plt.yticks(range(num_startups), [f"Startup {i+1}" for i in range(num_startups)])
+plt.axvline(x=180, color="r", linestyle="--", alpha=0.5, label="Startup 1 Failure")
+plt.axvline(x=300, color="g", linestyle="--", alpha=0.5, label="Startup 2 Acquisition")
+plt.axvline(x=365, color="b", linestyle="--", alpha=0.5, label="Startup 4 Joins")
 plt.legend(
-    [
-        "Fund in Startup",
-        "Founder 1",
-        "Founder 2",
-        "A* Fund Overall",
-        "Failure",
-        "Acquisition",
-        "New Startup",
-    ]
+    ["A* Fund", "Founder 1", "Founder 2", "Failure", "Acquisition", "New Startup"]
 )
 plt.tight_layout()
 
 plt.savefig(
-    "plot/startup_and_fund_ownership_structure.svg", format="svg", bbox_inches="tight"
+    "plot/corrected_startup_ownership_structure.svg", format="svg", bbox_inches="tight"
 )
-print("New plot saved as 'startup_and_fund_ownership_structure.svg'")
-
+print("Corrected plot saved as 'corrected_startup_ownership_structure.svg'")
 # Print some debug information
 print(f"Final number of members: {len(final_members)}")
 print(f"Fund ownership history shape: {fund_ownership_history.shape}")
