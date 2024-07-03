@@ -203,40 +203,47 @@ plt.savefig(
 print(
     "Simulation completed and graph saved as 'ownership_changes_with_new_startup.svg'"
 )
-plt.figure(figsize=(15, 6))
 
-# Ensure data is positive and normalized
-normalized_data = np.maximum(0, startup_ownership_history)
-normalized_data = normalized_data / np.sum(normalized_data, axis=0)
+plt.figure(figsize=(15, 8))
 
-# Calculate A* ownership
-a_star_ownership = 1 - np.sum(normalized_data, axis=0)
+time_points = range(0, days_to_simulate, 30)  # Every 30 days
+num_startups = len(fund.startups)
 
-# Create color map
-colors = plt.cm.get_cmap("tab20")(np.linspace(0, 1, len(final_members) + 1))
+for t in time_points:
+    startup_bars = []
+    for i, startup in enumerate(fund.startups):
+        if startup.start_date <= start_date + timedelta(days=t):
+            if (
+                startup.status == "failed"
+                and startup.failure_date <= start_date + timedelta(days=t)
+            ):
+                bar = [0.5, 0.5]  # Represent failed startup as half A*, half founders
+            elif (
+                startup.status == "acquired"
+                and startup.acquisition_date <= start_date + timedelta(days=t)
+            ):
+                bar = [1]  # Represent acquired startup as fully A*
+            else:
+                founder_ownership = sum(
+                    f.startup_ownerships.get(startup.name, 0) for f in startup.founders
+                )
+                bar = [0.5, founder_ownership]  # A* owns 50%, founders split the rest
+            startup_bars.append(bar)
 
-# Plot stacked area chart
-plt.stackplot(
-    range(days_to_simulate),
-    [a_star_ownership] + [normalized_data[i] for i in range(len(final_members))],
-    labels=["A* Fund"] + [f"{m.name}" for m in final_members],
-    colors=colors,
-)
-
-# Add event markers
-plt.axvline(x=180, color="r", linestyle="--", alpha=0.5)
-plt.axvline(x=300, color="g", linestyle="--", alpha=0.5)
-plt.axvline(x=365, color="b", linestyle="--", alpha=0.5)
+    plt.bar(t, 1, bottom=range(len(startup_bars)), width=20, color=["blue", "green"])
 
 plt.title("Startup Ownership Structure Over Time")
 plt.xlabel("Days")
-plt.ylabel("Ownership Percentage")
-plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+plt.ylabel("Startups")
+plt.yticks(range(num_startups), [s.name for s in fund.startups])
+plt.axvline(x=180, color="r", linestyle="--", alpha=0.5, label="Startup Failure")
+plt.axvline(x=300, color="g", linestyle="--", alpha=0.5, label="Startup Acquisition")
+plt.axvline(x=365, color="b", linestyle="--", alpha=0.5, label="New Startup Joins")
+plt.legend()
 plt.tight_layout()
-plt.grid(True)
 
 plt.savefig(
-    "plot/improved_startup_ownership_structure.svg", format="svg", bbox_inches="tight"
+    "plot/startup_ownership_structure_bars.svg", format="svg", bbox_inches="tight"
 )
 
 # Print some debug information
