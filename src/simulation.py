@@ -203,23 +203,30 @@ plt.savefig(
 print(
     "Simulation completed and graph saved as 'ownership_changes_with_new_startup.svg'"
 )
-# Create a new figure for startup ownership
 plt.figure(figsize=(15, 6))
 
-# Calculate A* ownership for each startup
-a_star_ownership = 1 - np.sum(startup_ownership_history, axis=0)
+# Ensure data is positive and normalized
+normalized_data = np.maximum(0, startup_ownership_history)
+normalized_data = normalized_data / np.sum(normalized_data, axis=0)
 
-# Plot stacked area chart for startup ownership
+# Calculate A* ownership
+a_star_ownership = 1 - np.sum(normalized_data, axis=0)
+
+# Create color map
+colors = plt.cm.get_cmap("tab20")(np.linspace(0, 1, len(final_members) + 1))
+
+# Plot stacked area chart
 plt.stackplot(
     range(days_to_simulate),
-    a_star_ownership,
-    *[
-        startup_ownership_history[i]
-        for i in range(len(final_members))
-        if final_members[i].role == "F"
-    ],
-    labels=["A* Fund"] + [f"{m.name}" for m in final_members if m.role == "F"],
+    [a_star_ownership] + [normalized_data[i] for i in range(len(final_members))],
+    labels=["A* Fund"] + [f"{m.name}" for m in final_members],
+    colors=colors,
 )
+
+# Add event markers
+plt.axvline(x=180, color="r", linestyle="--", alpha=0.5)
+plt.axvline(x=300, color="g", linestyle="--", alpha=0.5)
+plt.axvline(x=365, color="b", linestyle="--", alpha=0.5)
 
 plt.title("Startup Ownership Structure Over Time")
 plt.xlabel("Days")
@@ -228,9 +235,9 @@ plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
 plt.tight_layout()
 plt.grid(True)
 
-# Save the new plot as an SVG file
-plt.savefig("plot/startup_ownership_structure.svg", format="svg", bbox_inches="tight")
-print("Additional plot saved as 'startup_ownership_structure.svg'")
+plt.savefig(
+    "plot/improved_startup_ownership_structure.svg", format="svg", bbox_inches="tight"
+)
 
 # Print some debug information
 print(f"Final number of members: {len(final_members)}")
