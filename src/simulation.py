@@ -207,44 +207,45 @@ print(
 plt.figure(figsize=(15, 8))
 
 time_points = range(0, days_to_simulate, 30)  # Every 30 days
-num_startups = len(fund.startups)
+num_startups = (
+    len([m for m in final_members if m.role == "F"]) // 2
+)  # Assuming 2 founders per startup
 
-for t in time_points:
+startup_ownership = startup_ownership_history[
+    : len([m for m in final_members if m.role == "F"])
+]
+a_star_ownership = 1 - np.sum(startup_ownership, axis=0)
+
+for i, t in enumerate(time_points):
     startup_bars = []
-    for i, startup in enumerate(fund.startups):
-        if startup.start_date <= start_date + timedelta(days=t):
-            if (
-                startup.status == "failed"
-                and startup.failure_date <= start_date + timedelta(days=t)
-            ):
-                bar = [0.5, 0.5]  # Represent failed startup as half A*, half founders
-            elif (
-                startup.status == "acquired"
-                and startup.acquisition_date <= start_date + timedelta(days=t)
-            ):
-                bar = [1]  # Represent acquired startup as fully A*
-            else:
-                founder_ownership = sum(
-                    f.startup_ownerships.get(startup.name, 0) for f in startup.founders
-                )
-                bar = [0.5, founder_ownership]  # A* owns 50%, founders split the rest
-            startup_bars.append(bar)
+    for s in range(num_startups):
+        founder1 = startup_ownership[s * 2, t]
+        founder2 = startup_ownership[s * 2 + 1, t]
+        a_star = 1 - (founder1 + founder2)  # Assuming A* owns what founders don't
+        if founder1 + founder2 + a_star > 0:  # Only plot if there's any ownership
+            startup_bars.append([a_star, founder1, founder2])
 
-    plt.bar(t, 1, bottom=range(len(startup_bars)), width=20, color=["blue", "green"])
+    bottom = 0
+    for bar in startup_bars:
+        plt.bar(t, bar, bottom=bottom, width=20, color=["blue", "green", "orange"])
+        bottom += 1
 
 plt.title("Startup Ownership Structure Over Time")
 plt.xlabel("Days")
 plt.ylabel("Startups")
-plt.yticks(range(num_startups), [s.name for s in fund.startups])
+plt.yticks(range(num_startups), [f"Startup {i+1}" for i in range(num_startups)])
 plt.axvline(x=180, color="r", linestyle="--", alpha=0.5, label="Startup Failure")
 plt.axvline(x=300, color="g", linestyle="--", alpha=0.5, label="Startup Acquisition")
 plt.axvline(x=365, color="b", linestyle="--", alpha=0.5, label="New Startup Joins")
-plt.legend()
+plt.legend(
+    ["A* Fund", "Founder 1", "Founder 2", "Failure", "Acquisition", "New Startup"]
+)
 plt.tight_layout()
 
 plt.savefig(
     "plot/startup_ownership_structure_bars.svg", format="svg", bbox_inches="tight"
 )
+print("New plot saved as 'startup_ownership_structure_bars.svg'")
 
 # Print some debug information
 print(f"Final number of members: {len(final_members)}")
