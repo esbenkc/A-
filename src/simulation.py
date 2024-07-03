@@ -258,7 +258,7 @@ plt.legend(
 plt.tight_layout()
 
 plt.savefig(
-    "startup_and_fund_ownership_structure.svg", format="svg", bbox_inches="tight"
+    "plot/startup_and_fund_ownership_structure.svg", format="svg", bbox_inches="tight"
 )
 print("New plot saved as 'startup_and_fund_ownership_structure.svg'")
 
